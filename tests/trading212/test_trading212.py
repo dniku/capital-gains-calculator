@@ -994,7 +994,10 @@ def test_read_trading212_transactions_foreign_fee_price_discrepancy(
         Trading212Parser().load_from_dir(folder)
 
     assert (
-        "The total of the BAZ Market buy on 2024-01-01 is 17.50 GBP, but its "
+        f"Transaction: {folder / 'trading212.csv'}, row 2, "
+        "time 2024-01-01 16:10:05+00:00, "
+        "ID buy-usd-fee. The total of the BAZ Market buy on 2024-01-01 "
+        "is 17.50 GBP, but its "
         "shares, price, exchange rate and fees come to 16.96 GBP. Check the "
         "transaction in Trading 212 before relying on the report." in caplog.text
     )

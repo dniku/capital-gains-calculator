@@ -388,7 +388,9 @@ def action_from_str(label: str, file: Path) -> ActionType:
 class Trading212Transaction(BrokerTransaction):
     """Represents a single Trading 212 transaction."""
 
-    def __init__(self, header: list[str], row_raw: list[str], file: Path) -> None:
+    def __init__(
+        self, header: list[str], row_raw: list[str], file: Path, row_index: int
+    ) -> None:
         """Create transaction from CSV row."""
         if len(row_raw) != len(header):
             raise UnexpectedColumnCountError(row_raw, len(header), file)
@@ -528,9 +530,14 @@ class Trading212Transaction(BrokerTransaction):
                 if abs(gap) > rounding:
                     total = abs(amount)
                     LOGGER.warning(
+                        "Transaction: %s, row %d, time %s, ID %s. "
                         "The total of the %s %s on %s is %s %s, but its shares, "
                         "price, exchange rate and fees come to %s %s. Check the "
                         "transaction in Trading 212 before relying on the report.",
+                        file,
+                        row_index,
+                        self.datetime.isoformat(sep=" "),
+                        row.get(Trading212Column.TRANSACTION_ID) or "<none>",
                         symbol,
                         self.raw_action,
                         date,
@@ -1222,7 +1229,9 @@ class Trading212Parser(BaseDirParser[BrokerTransaction]):
         transactions: list[BrokerTransaction] = []
         for index, row in enumerate(lines, start=2):
             try:
-                transaction = Trading212Transaction(header, row, file_path)
+                transaction = Trading212Transaction(
+                    header, row, file_path, row_index=index
+                )
             except ParsingError as err:
                 err.add_row_context(index)
                 raise
