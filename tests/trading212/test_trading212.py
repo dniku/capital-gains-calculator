@@ -121,6 +121,15 @@ HEADER_2026_UTC = [
     "Time (UTC)" if column == "Time" else column for column in HEADER_2026
 ]
 
+HEADER_CASH_ONLY = [
+    "Action",
+    "Time (UTC)",
+    "Notes",
+    "ID",
+    "Total",
+    "Currency (Total)",
+]
+
 
 def _write_csv(path: Path, rows: list[list[str]]) -> None:
     path.write_text("\n".join(",".join(row) for row in rows) + "\n", encoding="utf-8")
@@ -173,6 +182,72 @@ def test_load_from_dir_accepts_uppercase_csv_extension(tmp_path: Path) -> None:
 
     assert len(transactions) == 1
     assert transactions[0].amount == Decimal("100.00")
+
+
+def test_read_trading212_cash_only_export(tmp_path: Path) -> None:
+    """Parse the reduced schema used for exports containing only cash transfers."""
+    rows = [
+        HEADER_CASH_ONLY,
+        [
+            "Deposit",
+            "2026-01-01 12:00:00+00:00",
+            "Test top-up",
+            "deposit-cash-only",
+            "10.00",
+            "GBP",
+        ],
+        [
+            "Withdrawal",
+            "2026-01-01 12:01:00+00:00",
+            "Test withdrawal",
+            "withdrawal-cash-only",
+            "10.00",
+            "GBP",
+        ],
+    ]
+    folder = _prepare_file(tmp_path, rows)
+
+    transactions = Trading212Parser.load_from_dir(folder)
+
+    assert [transaction.action for transaction in transactions] == [
+        ActionType.TRANSFER,
+        ActionType.TRANSFER,
+    ]
+    assert [transaction.amount for transaction in transactions] == [
+        Decimal("10.00"),
+        Decimal("-10.00"),
+    ]
+    notes = []
+    for transaction in transactions:
+        assert isinstance(transaction, Trading212Transaction)
+        notes.append(transaction.notes)
+    assert notes == [
+        "Test top-up",
+        "Test withdrawal",
+    ]
+    assert all(transaction.symbol is None for transaction in transactions)
+
+
+def test_read_trading212_reduced_schema_rejects_trade(tmp_path: Path) -> None:
+    """Do not let the cash-only fallback conceal an incomplete trade row."""
+    rows = [
+        HEADER_CASH_ONLY,
+        [
+            "Market buy",
+            "2026-01-01 12:00:00+00:00",
+            "",
+            "buy-cash-only",
+            "10.00",
+            "GBP",
+        ],
+    ]
+    folder = _prepare_file(tmp_path, rows)
+
+    with pytest.raises(ParsingError) as exc:
+        Trading212Parser.load_from_dir(folder)
+
+    assert "row 2" in str(exc.value)
+    assert "Missing Ticker column for Market buy" in str(exc.value)
 
 
 def test_read_trading212_transactions_supports_2020_export(tmp_path: Path) -> None:

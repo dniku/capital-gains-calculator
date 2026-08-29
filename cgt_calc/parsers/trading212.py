@@ -415,12 +415,23 @@ class Trading212Transaction(BrokerTransaction):
         action = action_from_str(self.raw_action, file)
         self.converted = self._converted(row)
 
-        symbol = row[Trading212Column.TICKER] or None
-        description = row[Trading212Column.NAME]
+        def trade_column_or_empty(column: Trading212Column) -> str:
+            """Read a trade column omitted from cash-only transfer exports."""
+            value = row.get(column)
+            if value is not None:
+                return value
+            if action == ActionType.TRANSFER:
+                return ""
+            raise ValueError(f"Missing {column.value} column for {self.raw_action}")
+
+        symbol = trade_column_or_empty(Trading212Column.TICKER) or None
+        description = trade_column_or_empty(Trading212Column.NAME)
 
         quantity = decimal_or_none(row, Trading212Column.NO_OF_SHARES)
         self.price_foreign = decimal_or_none(row, Trading212Column.PRICE_PER_SHARE)
-        self.currency_foreign = row[Trading212Column.CURRENCY_PRICE_PER_SHARE]
+        self.currency_foreign = trade_column_or_empty(
+            Trading212Column.CURRENCY_PRICE_PER_SHARE
+        )
         self.exchange_rate = decimal_or_none(row, Trading212Column.EXCHANGE_RATE)
 
         if Trading212Column.TOTAL in row:
@@ -555,7 +566,7 @@ class Trading212Transaction(BrokerTransaction):
             row.get(Trading212Column.CURRENCY_WITHHOLDING_TAX) or None
         )
 
-        isin_raw = row[Trading212Column.ISIN]
+        isin_raw = trade_column_or_empty(Trading212Column.ISIN)
         isin = Isin(isin_raw) if isin_raw else None
         # An export without the ID column gives None; one with the column
         # but no value gives "". Both mean "no identity", so they must not
