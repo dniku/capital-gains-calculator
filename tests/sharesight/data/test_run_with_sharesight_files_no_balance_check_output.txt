@@ -29,8 +29,12 @@ Capital gains
 
 Dividends
   Proceeds:                £6.92
+  Tax paid at source:      £0.59
+  Treaty ceiling:          £0.59
+  SA106 C:                 £0.59
   Tax-free allowance:  £2,000.00
   Taxable proceeds:        £0.00
+NOTE: SA106 C is only correct for dividends from one country.
 
 Interest
   UK proceeds:             £0.00

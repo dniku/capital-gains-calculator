@@ -14,6 +14,7 @@ from cgt_calc.exceptions import CalculationError
 from cgt_calc.isin_converter import IsinConverter
 from cgt_calc.main import CapitalGainsCalculator
 from cgt_calc.model import ActionType, BrokerTransaction, CurrencyCode
+from cgt_calc.render_text import render_text
 from cgt_calc.share_prices import SharePrices
 from cgt_calc.spin_off_handler import SpinOffHandler
 
@@ -172,6 +173,23 @@ def _dividend_tax_at(
         currency=USD,
         broker=broker,
     )
+
+
+def test_cli_reports_single_country_dividend_tax_totals() -> None:
+    """Report actual withholding, treaty ceiling, and the lower SA106 C value."""
+    transactions = [
+        _dividend_at(DIVIDEND_DATE, 100, broker="A"),
+        _dividend_tax_at(DIVIDEND_DATE, 14.994, broker="A"),
+    ]
+    report = _calculator(transactions).calculate(transactions)
+    output = render_text(report)
+
+    assert report.total_dividend_tax_at_source_amount() == Decimal("14.994")
+    assert report.total_dividend_taxes_in_tax_treaties_amount() == Decimal("15.00")
+    assert "Tax paid at source:  £14.99" in output
+    assert "Treaty ceiling:      £15.00" in output
+    assert "SA106 C:             £14.99" in output
+    assert "SA106 C is only correct for dividends from one country" in output
 
 
 def test_late_correction_belongs_to_the_payment_it_corrects(

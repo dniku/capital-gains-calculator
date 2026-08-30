@@ -141,12 +141,28 @@ def _summary_rows(
     dividends: list[tuple[str, str]] = [
         ("Proceeds", _pounds(report.total_dividends_amount())),
     ]
+    dividend_tax_at_source = report.total_dividend_tax_at_source_amount()
+    dividend_treaty_ceiling = report.total_dividend_taxes_in_tax_treaties_amount()
+    dividend_notes: list[str] = []
+    if dividend_tax_at_source or dividend_treaty_ceiling:
+        dividends.extend(
+            [
+                ("Tax paid at source", _pounds(dividend_tax_at_source)),
+                ("Treaty ceiling", _pounds(dividend_treaty_ceiling)),
+                (
+                    "SA106 C",
+                    _pounds(min(dividend_tax_at_source, dividend_treaty_ceiling)),
+                ),
+            ]
+        )
+        dividend_notes.append(
+            "NOTE: SA106 C is only correct for dividends from one country."
+        )
     if report.dividend_allowance is not None:
         dividends.append(("Tax-free allowance", _pounds(report.dividend_allowance)))
     taxable_dividends = report.taxable_dividends()
     if taxable_dividends is not None:
         dividends.append(("Taxable proceeds", _pounds(taxable_dividends)))
-    dividend_notes: list[str] = []
     if report.explains_dividend_tax_credit():
         dividend_notes.append(
             "Most dividends before 6 April 2016 carried a tax credit, so cgt-calc "

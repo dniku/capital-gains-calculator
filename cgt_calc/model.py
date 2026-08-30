@@ -907,6 +907,17 @@ class CapitalGainsReport:
                 total += item.dividend.tax_treaty_amount
         return total
 
+    def total_dividend_tax_at_source_amount(self) -> Decimal:
+        """Total dividend tax withheld at source, net of refunds."""
+        total = Decimal(0)
+        for item in self._filter_calculation_log(
+            self.calculation_log_yields, RuleType.DIVIDEND
+        ):
+            assert item.dividend is not None
+            if not item.dividend.is_interest:
+                total -= item.dividend.tax_at_source
+        return max(Decimal(0), total)
+
     def taxable_dividends(self) -> Decimal | None:
         """Taxable dividends after allowances, or None where the report cannot say.
 
